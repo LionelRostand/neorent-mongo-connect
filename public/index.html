@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoRent MongoDB Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#64748b',
+                        muted: '#f8fafc',
+                        card: '#ffffff',
+                        border: '#e2e8f0'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-6 py-8">
+        <!-- Header -->
+        <header class="mb-8 fade-in">
+            <div class="flex items-center gap-3 mb-2">
+                <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.79 4 8.5 4s8.5-1.79 8.5-4V7M4 7c0 2.21 3.79 4 8.5 4s8.5-1.79 8.5-4M4 7c0-2.21 3.79-4 8.5-4s8.5 1.79 8.5 4"></path>
+                </svg>
+                <h1 class="text-3xl font-bold text-gray-800">NeoRent MongoDB Dashboard</h1>
+            </div>
+            <p class="text-gray-600">Monitoring des connexions entre MongoDB et l'application NeoRent</p>
+        </header>
+
+        <!-- Status Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-sm border fade-in">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">État de la DB</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div id="db-status-icon" class="w-5 h-5 rounded-full bg-green-500 pulse-dot"></div>
+                            <span id="db-status-text" class="font-semibold text-green-600">Connecté</span>
+                        </div>
+                    </div>
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.79 4 8.5 4s8.5-1.79 8.5-4V7"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border fade-in">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Connexions Actives</p>
+                        <p id="active-connections" class="text-2xl font-bold text-gray-800">0</p>
+                    </div>
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border fade-in">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Collections</p>
+                        <p id="collections-count" class="text-2xl font-bold text-gray-800">0</p>
+                    </div>
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border fade-in">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Requêtes/min</p>
+                        <p id="queries-per-min" class="text-2xl font-bold text-gray-800">0</p>
+                    </div>
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Health Check -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border mb-8 fade-in">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Test de Connexion API</h3>
+            <div class="flex gap-4 mb-4">
+                <button id="test-health" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                    Tester Health Check
+                </button>
+                <button id="test-collections" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    Lister Collections
+                </button>
+            </div>
+            <div id="api-response" class="bg-gray-50 p-4 rounded-lg min-h-32">
+                <p class="text-gray-500">Cliquez sur un bouton pour tester l'API...</p>
+            </div>
+        </div>
+
+        <!-- Collections List -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border fade-in">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Collections MongoDB</h3>
+            <div id="collections-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg text-center">
+                    <p class="text-gray-500">Chargement des collections...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-sm text-gray-500">
+            <p>Dernière mise à jour: <span id="last-update">--:--:--</span></p>
+        </footer>
+    </div>
+
+    <script>
+        let stats = {
+            connections: 0,
+            queries: 0,
+            collections: []
+        };
+
+        // Fonction pour mettre à jour l'heure
+        function updateTime() {
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Simuler des données en temps réel
+        function updateStats() {
+            stats.connections = Math.floor(Math.random() * 10) + 1;
+            stats.queries = Math.floor(Math.random() * 50) + 10;
+            
+            document.getElementById('active-connections').textContent = stats.connections;
+            document.getElementById('queries-per-min').textContent = stats.queries;
+            updateTime();
+        }
+
+        // Test Health Check
+        document.getElementById('test-health').addEventListener('click', async () => {
+            const responseDiv = document.getElementById('api-response');
+            responseDiv.innerHTML = '<p class="text-blue-600">Test en cours...</p>';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('db-status-icon').className = 'w-5 h-5 rounded-full bg-green-500 pulse-dot';
+                    document.getElementById('db-status-text').textContent = 'Connecté';
+                    document.getElementById('db-status-text').className = 'font-semibold text-green-600';
+                    document.getElementById('collections-count').textContent = data.mongodb.collections.length;
+                    
+                    responseDiv.innerHTML = `
+                        <div class="text-green-600">
+                            <p class="font-semibold">✅ Connexion réussie!</p>
+                            <pre class="text-sm mt-2 bg-white p-2 rounded border overflow-auto">${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                document.getElementById('db-status-icon').className = 'w-5 h-5 rounded-full bg-red-500';
+                document.getElementById('db-status-text').textContent = 'Déconnecté';
+                document.getElementById('db-status-text').className = 'font-semibold text-red-600';
+                
+                responseDiv.innerHTML = `
+                    <div class="text-red-600">
+                        <p class="font-semibold">❌ Erreur de connexion</p>
+                        <p class="text-sm mt-2">${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+
+        // Test Collections
+        document.getElementById('test-collections').addEventListener('click', async () => {
+            const responseDiv = document.getElementById('api-response');
+            responseDiv.innerHTML = '<p class="text-blue-600">Récupération des collections...</p>';
+            
+            try {
+                const response = await fetch('/api/collections');
+                const collections = await response.json();
+                
+                responseDiv.innerHTML = `
+                    <div class="text-green-600">
+                        <p class="font-semibold">📚 Collections trouvées: ${collections.length}</p>
+                        <pre class="text-sm mt-2 bg-white p-2 rounded border overflow-auto">${JSON.stringify(collections, null, 2)}</pre>
+                    </div>
+                `;
+                
+                // Mettre à jour la liste des collections
+                updateCollectionsList(collections);
+                
+            } catch (error) {
+                responseDiv.innerHTML = `
+                    <div class="text-red-600">
+                        <p class="font-semibold">❌ Erreur</p>
+                        <p class="text-sm mt-2">${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+
+        function updateCollectionsList(collections) {
+            const listDiv = document.getElementById('collections-list');
+            
+            if (collections.length === 0) {
+                listDiv.innerHTML = '<div class="bg-gray-50 p-4 rounded-lg text-center"><p class="text-gray-500">Aucune collection trouvée</p></div>';
+                return;
+            }
+            
+            listDiv.innerHTML = collections.map(collection => `
+                <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-primary">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="font-medium text-gray-800">${collection.name}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1">Type: ${collection.type || 'collection'}</p>
+                </div>
+            `).join('');
+        }
+
+        // Initialisation
+        updateStats();
+        updateTime();
+        setInterval(updateStats, 3000);
+        setInterval(updateTime, 1000);
+
+        // Test automatique au chargement
+        setTimeout(() => {
+            document.getElementById('test-health').click();
+        }, 1000);
+    </script>
+</body>
+</html>
